@@ -2,7 +2,7 @@
 //  DENÍK EKZÉMU – app.js
 // ============================================================
 
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 
 // ── DATA LAYER (localStorage) ────────────────────────────────
 const DB = {
