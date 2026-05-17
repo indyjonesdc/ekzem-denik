@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<!-- PWA – základní -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#D97706">
+
+<!-- iOS install support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Ekzém deník">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
+
+<!-- Android / obecné -->
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+
+<!-- Splash screens iOS (volitelné, ale pomáhají) -->
+<meta name="msapplication-TileImage" content="icons/icon-144.png">
+<meta name="msapplication-TileColor" content="#FFF9EC">
+
+<title>Deník ekzému</title>
+
+<style>
+/* ── RESET ── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f5f5;color:#1a1a1a;overflow:hidden}
+
+/* ── SCREENS ── */
+.screen{display:none;height:100vh;height:100dvh;flex-direction:column;overflow:hidden}
+.screen.active{display:flex}
+
+/* ── AUTH ── */
+.auth-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 20px;background:#FFFBEC;overflow-y:auto}
+.auth-logo{font-size:72px;margin-bottom:12px;text-align:center}
+.auth-title{font-size:28px;font-weight:800;color:#92400E;margin-bottom:8px;text-align:center}
+.auth-sub{font-size:15px;color:#B45309;margin-bottom:36px;text-align:center;line-height:1.5;max-width:280px}
+.auth-card{background:#fff;border-radius:24px;padding:24px;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+.auth-label{font-size:13px;color:#666;font-weight:600;display:block;margin-bottom:6px;margin-top:16px}
+.auth-label:first-child{margin-top:0}
+.auth-input{width:100%;padding:13px 15px;border:2px solid #e8e8e8;border-radius:14px;font-size:16px;color:#1a1a1a;background:#fff;outline:none;transition:border-color .2s;font-family:inherit}
+.auth-input:focus{border-color:#D97706}
+.auth-btn{width:100%;padding:15px;border-radius:16px;font-size:17px;font-weight:700;cursor:pointer;border:none;margin-top:20px;background:#D97706;color:#fff}
+.auth-btn:active{opacity:.85;transform:scale(.99)}
+.auth-divider{text-align:center;color:#ccc;margin:18px 0;font-size:13px;position:relative;display:flex;align-items:center;gap:10px}
+.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:#e8e8e8}
+.auth-google{width:100%;padding:13px;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;border:2px solid #e8e8e8;background:#fff;color:#1a1a1a;display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit}
+.auth-google:active{background:#f5f5f5}
+.auth-link{text-align:center;margin-top:18px;font-size:14px;color:#D97706;cursor:pointer;font-weight:600}
+
+/* ── INSTALL BANNER ── */
+.install-banner{background:#D97706;color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer}
+.install-banner-text{flex:1;font-size:13px;font-weight:600;line-height:1.3}
+.install-banner-btn{background:#fff;color:#D97706;border:none;border-radius:99px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.install-banner-close{font-size:20px;opacity:.8;background:none;border:none;color:#fff;cursor:pointer;padding:0 4px}
+
+/* ── iOS INSTALL TIP ── */
+.ios-tip{background:#1a1a1a;color:#fff;margin:8px 12px;border-radius:16px;padding:14px 16px;font-size:13px;line-height:1.6;display:none}
+.ios-tip.show{display:block}
+.ios-tip strong{color:#FBBF24}
+.ios-tip-close{float:right;background:none;border:none;color:#aaa;font-size:18px;cursor:pointer;margin-left:8px;margin-top:-2px}
+
+/* ── HEADER ── */
+.app-header{background:#FFF9EC;border-bottom:2px solid #F5E6B8;padding:10px 14px;padding-top:max(10px, env(safe-area-inset-top));display:flex;align-items:center;gap:10px;flex-shrink:0}
+.hdr-avatar{width:42px;height:42px;border-radius:50%;background:#FDE68A;display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;flex-shrink:0;overflow:hidden}
+.hdr-info{flex:1;min-width:0}
+.hdr-name{font-size:16px;font-weight:700;color:#92400E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-sub{font-size:11px;color:#B45309;margin-top:1px}
+.hdr-actions{display:flex;gap:6px}
+.hdr-btn{width:38px;height:38px;border-radius:50%;border:2px solid #F5E6B8;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:17px;flex-shrink:0}
+.hdr-btn:active{background:#F5E6B8}
+
+/* ── SCROLL AREA ── */
+.page-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 12px 20px}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{background:#fff;border-top:1.5px solid #e8e8e8;display:flex;padding:6px 0;padding-bottom:max(6px, env(safe-area-inset-bottom));flex-shrink:0}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:5px 2px;border-radius:12px;transition:background .15s;border:none;background:none;font-family:inherit}
+.nav-item:active{background:#f5f5f5}
+.nav-item.active{background:#FFF9EC}
+.nav-icon{font-size:23px;line-height:1}
+.nav-label{font-size:10px;color:#999;font-weight:600}
+.nav-item.active .nav-label{color:#92400E}
+
+/* ── CARDS ── */
+.kcard{background:#fff;border-radius:20px;border:2px solid #e8e8e8;padding:16px;margin-bottom:12px}
+.kc-food{border-color:#F5E6B8;background:#FFFDF5}
+.kc-cream{border-color:#9FE1CB;background:#F5FFFB}
+.kc-act{border-color:#AFA9EC;background:#FAFAFF}
+.kc-ekzem{border-color:#F5C4B3;background:#FFFAF8}
+.kc-photo{border-color:#B5D4F4;background:#F5FAFF}
+.section-title{font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:10px;display:flex;align-items:center;gap:6px}
+
+/* ── TIME PILL ── */
+.tpill{display:inline-flex;align-items:center;gap:7px;border-radius:99px;padding:8px 16px;margin-bottom:12px;cursor:pointer;border:none;font-size:15px;font-weight:700}
+.tpill:active{opacity:.8;transform:scale(.97)}
+.trow{display:flex;align-items:center;gap:8px;margin-bottom:12px;border-radius:14px;padding:10px 14px;border:2px solid}
+.trow input[type=time]{border:none;background:transparent;font-size:16px;font-weight:700;flex:1;outline:none;padding:0;color:inherit;font-family:inherit}
+.tconf{border:none;border-radius:99px;padding:7px 16px;font-size:14px;cursor:pointer;font-weight:700;font-family:inherit}
+
+/* ── CHIPS ── */
+.cw{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.chip{display:inline-flex;align-items:center;font-size:14px;padding:9px 15px;border-radius:99px;cursor:pointer;border:2px solid transparent;line-height:1;font-weight:600;transition:all .15s;font-family:inherit}
+.chip:active{transform:scale(.95)}
+.cf{background:#FFF9EC;border-color:#F5E6B8;color:#92400E}.cf.on{background:#FDE68A;border-color:#D97706;color:#78350F}
+.cc{background:#D6F5E8;border-color:#9FE1CB;color:#0F6E56}.cc.on{background:#5DCAA5;border-color:#0F6E56;color:#fff}
+.ca{background:#EAE8FF;border-color:#AFA9EC;color:#534AB7}.ca.on{background:#7F77DD;border-color:#534AB7;color:#fff}
+.ct{background:#FFE5D9;border-color:#F5C4B3;color:#993C1D}.ct.on{background:#F0997B;border-color:#D85A30;color:#fff}
+
+/* ── DAVKA ── */
+.davka-wrap{background:#FFFBEC;border:2px solid #F5E6B8;border-radius:14px;padding:14px;margin-bottom:12px}
+.davka-title{font-size:13px;font-weight:700;color:#92400E;margin-bottom:10px}
+.davka-counter{display:flex;align-items:center;gap:14px}
+.dc-btn{width:44px;height:44px;border-radius:50%;border:2px solid #F5E6B8;background:#fff;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#92400E;flex-shrink:0;font-family:inherit}
+.dc-btn:active{background:#FDE68A;transform:scale(.93)}
+.dc-num{font-size:30px;font-weight:800;color:#92400E;min-width:40px;text-align:center}
+.dc-sub{font-size:12px;color:#B45309;margin-top:2px;font-weight:600}
+.davka-hint{font-size:12px;color:#B45309;margin-top:10px;line-height:1.5;padding:8px 12px;background:#fff;border-radius:10px;border:1px solid #F5E6B8;font-weight:500}
+
+/* ── REAKCE ── */
+.rg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.rb{padding:12px 8px;border-radius:14px;border:2px solid transparent;background:#f5f5f5;cursor:pointer;text-align:center;line-height:1.4;transition:all .15s;font-family:inherit}
+.rb:active{transform:scale(.95)}
+.rb .re{font-size:22px;display:block;margin-bottom:4px}
+.rb .rt{font-size:12px;color:#666;font-weight:600}
+.rx-ok.on{background:#D6F5E8;border-color:#5DCAA5}.rx-ok.on .rt{color:#085041}
+.rx-meh.on{background:#FFF9EC;border-color:#F5E6B8}.rx-meh.on .rt{color:#78350F}
+.rx-bad.on{background:#FFE5D9;border-color:#F0997B}.rx-bad.on .rt{color:#712B13}
+.rx-vbad.on{background:#FFE5E5;border-color:#F09595}.rx-vbad.on .rt{color:#791F1F}
+
+/* ── SEV ── */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.sb{padding:13px 8px;border-radius:14px;border:2px solid transparent;background:#f5f5f5;cursor:pointer;text-align:center;font-size:13px;color:#666;font-weight:600;line-height:1.4;transition:all .15s;font-family:inherit}
+.sb:active{transform:scale(.95)}
+.sb .se{font-size:24px;display:block;margin-bottom:4px}
+.s1.on{background:#D6F5E8;border-color:#5DCAA5;color:#085041}
+.s2.on{background:#FFF9EC;border-color:#F5E6B8;color:#78350F}
+.s3.on{background:#FFE5D9;border-color:#F0997B;color:#712B13}
+.s4.on{background:#FFE5E5;border-color:#F09595;color:#791F1F}
+
+/* ── SKRAB ── */
+.skw{background:#FFF0F0;border-radius:14px;border:2px solid #F5C4B3;padding:14px;margin-bottom:12px}
+.skt{font-size:14px;font-weight:700;color:#993C1D;margin-bottom:10px}
+.skbg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.skb{padding:11px 8px;border-radius:14px;border:2px solid transparent;background:#fff;cursor:pointer;text-align:center;line-height:1.3;transition:all .15s;font-family:inherit}
+.skb:active{transform:scale(.95)}
+.skb .ske{font-size:22px;display:block;margin-bottom:3px}
+.skb .skt2{font-size:12px;color:#666;font-weight:600}
+.sk0.on{background:#D6F5E8;border-color:#5DCAA5}.sk0.on .skt2{color:#085041}
+.sk1.on{background:#FFF9EC;border-color:#F5E6B8}.sk1.on .skt2{color:#78350F}
+.sk2.on{background:#FFE5D9;border-color:#F0997B}.sk2.on .skt2{color:#712B13}
+.sk3.on{background:#FFE5E5;border-color:#F09595}.sk3.on .skt2{color:#791F1F}
+
+/* ── INPUTS ── */
+.inp{width:100%;padding:13px 15px;border:2px solid #e8e8e8;border-radius:14px;font-size:15px;background:#fff;color:#1a1a1a;outline:none;font-family:inherit;transition:border-color .2s;-webkit-appearance:none}
+.inp:focus{border-color:#D97706}
+textarea.inp{min-height:72px;resize:none;line-height:1.5}
+.inp-label{font-size:13px;color:#666;font-weight:700;margin-bottom:6px;margin-top:14px;display:block}
+.inp-label:first-child{margin-top:0}
+
+/* ── SAVE BTN ── */
+.savbtn{width:100%;padding:16px;border-radius:18px;font-size:17px;font-weight:800;cursor:pointer;border:none;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.01em;font-family:inherit}
+.savbtn:active{opacity:.85;transform:scale(.98)}
+.sv-food{background:#D97706;color:#fff}
+.sv-cream{background:#1D9E75;color:#fff}
+.sv-act{background:#534AB7;color:#fff}
+.sv-ekzem{background:#D85A30;color:#fff}
+.sv-purple{background:#534AB7;color:#fff}
+.sv-blue{background:#185FA5;color:#fff}
+
+/* ── TIMELINE ── */
+.tl-item{display:flex;gap:10px;align-items:flex-start}
+.tl-l{display:flex;flex-direction:column;align-items:center;min-width:46px}
+.tl-t{font-size:11px;color:#999;font-weight:700;margin-top:3px}
+.tl-cn{width:2px;background:#e8e8e8;flex:1;min-height:16px;margin:4px 0;border-radius:1px}
+.tl-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;border:3px solid #fff;margin-top:4px}
+.tl-b{flex:1;background:#fff;border-radius:16px;border:2px solid #e8e8e8;padding:12px 14px;margin-bottom:8px}
+.tl-tp{font-size:11px;font-weight:800;margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em}
+.tl-ds{font-size:14px;color:#1a1a1a;line-height:1.4;font-weight:500}
+.tl-nt{font-size:12px;color:#666;margin-top:3px;line-height:1.4}
+.badge{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:3px 10px;border-radius:99px;margin-top:5px;margin-right:4px;font-weight:700}
+
+/* ── STATS ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-box{background:#fff;border-radius:18px;border:2px solid #e8e8e8;padding:16px;text-align:center}
+.stat-n{font-size:32px;font-weight:800;line-height:1}
+.stat-l{font-size:11px;color:#666;margin-top:5px;font-weight:700}
+.pattern-item{background:#fff;border-radius:14px;border:2px solid #e8e8e8;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.pbw{flex:1;height:8px;background:#f0f0f0;border-radius:99px;overflow:hidden}
+.pb{height:8px;border-radius:99px}
+.pn{font-size:13px;color:#1a1a1a;min-width:90px;font-weight:600}
+.pct{font-size:12px;color:#666;min-width:26px;text-align:right;font-weight:600}
+
+/* ── TIPS ── */
+.tip-card{background:#fff;border-radius:18px;border:2px solid #C0DD97;padding:14px 16px;margin-bottom:12px}
+.tip-hdr{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.tip-icon{width:38px;height:38px;border-radius:50%;background:#EAF3DE;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.tip-title{font-size:15px;font-weight:700;color:#3B6D11}
+.tip-body{font-size:13px;color:#555;line-height:1.65}
+
+/* ── SHARE ── */
+.share-code{background:#FFFBEC;border:3px dashed #F5E6B8;border-radius:18px;padding:20px;text-align:center;margin-bottom:16px}
+.share-code-num{font-size:40px;font-weight:900;color:#92400E;letter-spacing:10px;font-family:monospace}
+.share-code-lbl{font-size:12px;color:#B45309;margin-top:6px;font-weight:700}
+
+/* ── PHOTO ── */
+.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.photo-thumb{border-radius:16px;overflow:hidden;border:2px solid #e8e8e8;aspect-ratio:1;position:relative;cursor:pointer;background:#f5f5f5}
+.photo-thumb img{width:100%;height:100%;object-fit:cover}
+.photo-date-badge{position:absolute;bottom:6px;left:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:4px 8px;border-radius:99px;text-align:center;font-weight:700}
+.photo-capture-btn{width:100%;padding:18px;border-radius:18px;font-size:16px;font-weight:700;cursor:pointer;border:3px dashed #B5D4F4;background:#F0F7FF;color:#185FA5;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;font-family:inherit}
+.photo-capture-btn:active{background:#DFF0FF}
+.analysis-box{background:#fff;border-radius:16px;border:2px solid #B5D4F4;padding:14px;margin-top:12px}
+.analysis-title{font-size:14px;font-weight:700;color:#185FA5;margin-bottom:8px}
+.analysis-body{font-size:13px;color:#555;line-height:1.7;white-space:pre-wrap}
+.spinner{width:20px;height:20px;border:3px solid #B5D4F4;border-top-color:#185FA5;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PROFILE ── */
+.prof-avatar-big{width:80px;height:80px;border-radius:50%;background:#FDE68A;display:flex;align-items:center;justify-content:center;font-size:40px;margin:0 auto 20px}
+.agesel{display:flex;flex-wrap:wrap;gap:8px}
+.agebtn{padding:9px 16px;border-radius:99px;border:2px solid #e8e8e8;background:#f5f5f5;font-size:14px;color:#666;cursor:pointer;font-weight:600;font-family:inherit;transition:all .15s}
+.agebtn:active{transform:scale(.95)}
+.agebtn.on{background:#FDE68A;border-color:#D97706;color:#78350F}
+.gender-row{display:flex;gap:10px}
+.gender-btn{flex:1;padding:13px;border-radius:16px;border:2px solid #e8e8e8;background:#f5f5f5;font-size:16px;cursor:pointer;text-align:center;font-weight:600;font-family:inherit;transition:all .15s}
+.gender-btn:active{transform:scale(.96)}
+.gender-btn.on{background:#FDE68A;border-color:#D97706;color:#78350F}
+
+/* ── ACTION BTNS ── */
+.section-label{font-size:11px;font-weight:800;color:#999;text-transform:uppercase;letter-spacing:.1em;margin:16px 0 8px;padding:0 2px}
+.action-btn{width:100%;padding:15px;border-radius:16px;font-size:15px;font-weight:700;cursor:pointer;border:2px solid;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;font-family:inherit;transition:opacity .15s}
+.action-btn:active{opacity:.8;transform:scale(.99)}
+.ab-green{background:#EAF3DE;border-color:#97C459;color:#3B6D11}
+.ab-blue{background:#E6F1FB;border-color:#B5D4F4;color:#185FA5}
+.ab-red{background:#FCEBEB;border-color:#F09595;color:#A32D2D}
+.ab-orange{background:#FAEEDA;border-color:#FAC775;color:#633806}
+
+/* ── MISC ── */
+.empty-state{text-align:center;padding:48px 20px;color:#bbb}
+.empty-icon{font-size:52px;margin-bottom:12px}
+.empty-text{font-size:15px;line-height:1.6;color:#999}
+.toast{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%) translateY(10px);background:#1a1a1a;color:#fff;font-size:14px;font-weight:600;padding:11px 24px;border-radius:99px;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.version-tag{text-align:center;font-size:11px;color:#ccc;margin-top:10px;font-weight:600}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH SCREEN ══ -->
+<div id="screen-auth" class="screen active">
+  <div class="auth-wrap">
+    <div class="auth-logo">🌟</div>
+    <div class="auth-title">Deník ekzému</div>
+    <div class="auth-sub">Sledujte co zlepšuje a co zhoršuje ekzém vašeho dítěte</div>
+    <div class="auth-card">
+      <div id="auth-login-form">
+        <span class="auth-label">E-mail</span>
+        <input class="auth-input" type="email" id="auth-email" placeholder="vas@email.cz" autocomplete="email" inputmode="email">
+        <span class="auth-label">Heslo</span>
+        <input class="auth-input" type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password">
+        <button class="auth-btn" onclick="login()">Přihlásit se</button>
+        <div class="auth-divider">nebo</div>
+        <button class="auth-google" onclick="loginDemo()">🚀 Vyzkoušet bez registrace</button>
+        <div class="auth-link" onclick="showRegister()">Nemáte účet? Registrujte se →</div>
+      </div>
+      <div id="auth-register-form" style="display:none">
+        <span class="auth-label">Vaše jméno</span>
+        <input class="auth-input" type="text" id="reg-name" placeholder="Maminka / Tatínek…" autocomplete="name">
+        <span class="auth-label">E-mail</span>
+        <input class="auth-input" type="email" id="reg-email" placeholder="vas@email.cz" autocomplete="email" inputmode="email">
+        <span class="auth-label">Heslo</span>
+        <input class="auth-input" type="password" id="reg-password" placeholder="min. 6 znaků" autocomplete="new-password">
+        <button class="auth-btn" onclick="register()">Vytvořit účet</button>
+        <div class="auth-link" onclick="showLogin()">← Zpět na přihlášení</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MAIN APP SCREEN ══ -->
+<div id="screen-app" class="screen">
+
+  <!-- Install banner (Android) -->
+  <div id="install-banner" class="install-banner" style="display:none">
+    <div class="install-banner-text">📲 Přidejte aplikaci na plochu telefonu!</div>
+    <button class="install-banner-btn" onclick="triggerInstall()">Nainstalovat</button>
+    <button class="install-banner-close" onclick="dismissBanner()">✕</button>
+  </div>
+
+  <!-- iOS install tip -->
+  <div class="ios-tip" id="ios-tip">
+    <button class="ios-tip-close" onclick="this.parentElement.classList.remove('show')">✕</button>
+    <strong>📲 Přidejte na plochu (iPhone):</strong><br>
+    Klepněte na <strong>⬆️ Sdílet</strong> v Safari → <strong>„Přidat na plochu"</strong>
+  </div>
+
+  <div class="app-header">
+    <div class="hdr-avatar" id="hdr-avatar" onclick="goTab('profil')">🌟</div>
+    <div class="hdr-info">
+      <div class="hdr-name" id="hdr-name">Deník ekzému</div>
+      <div class="hdr-sub" id="hdr-sub">nastavte profil dítěte</div>
+    </div>
+    <div class="hdr-actions">
+      <div class="hdr-btn" onclick="goTab('share')" title="Sdílet">👥</div>
+      <div class="hdr-btn" onclick="logout()" title="Odhlásit">🚪</div>
+    </div>
+  </div>
+
+  <div class="page-content" id="page-content"></div>
+
+  <div class="bottom-nav">
+    <button class="nav-item" id="nav-food"   onclick="goTab('food')">  <div class="nav-icon">🍽</div><div class="nav-label">Jídlo</div></button>
+    <button class="nav-item" id="nav-cream"  onclick="goTab('cream')"> <div class="nav-icon">🧴</div><div class="nav-label">Krém</div></button>
+    <button class="nav-item" id="nav-ekzem"  onclick="goTab('ekzem')"> <div class="nav-icon">🔴</div><div class="nav-label">Ekzém</div></button>
+    <button class="nav-item" id="nav-dnes"   onclick="goTab('dnes')">  <div class="nav-icon">📋</div><div class="nav-label">Dnes</div></button>
+    <button class="nav-item" id="nav-foto"   onclick="goTab('foto')">  <div class="nav-icon">📷</div><div class="nav-label">Foto AI</div></button>
+    <button class="nav-item" id="nav-more"   onclick="goTab('more')">  <div class="nav-icon">☰</div><div class="nav-label">Více</div></button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<input type="file" id="file-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoUpload(this)">
+
+<script src="app.js"></script>
+<script>
+// ── PWA INSTALL LOGIC ──────────────────────────────────────
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show banner only in app screen
+  if (!document.getElementById('screen-app').classList.contains('active')) return;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+
+function triggerInstall() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(r => {
+    if (r.outcome === 'accepted') toast('Aplikace nainstalována! 🎉');
+    deferredPrompt = null;
+    dismissBanner();
+  });
+}
+function dismissBanner() {
+  document.getElementById('install-banner').style.display = 'none';
+}
+
+// iOS detection – show tip once
+function checkIOSTip() {
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone;
+  const shown = localStorage.getItem('ios_tip_shown');
+  if (isIOS && !isStandalone && !shown) {
+    document.getElementById('ios-tip').classList.add('show');
+    localStorage.setItem('ios_tip_shown', '1');
+  }
+}
+
+// After app loads show tip
+const _origShowApp = showApp;
+// Override showApp to also show install hints
+const origShowApp = window.showApp;
+window.addEventListener('DOMContentLoaded', () => {
+  // patch showApp
+  const realShowApp = showApp;
+  window.showApp = function() {
+    realShowApp();
+    setTimeout(() => {
+      checkIOSTip();
+      if (deferredPrompt) document.getElementById('install-banner').style.display = 'flex';
+    }, 800);
+  };
+});
+
+window.addEventListener('appinstalled', () => {
+  toast('Aplikace přidána na plochu! 🎉');
+  dismissBanner();
+});
+</script>
+</body>
+</html>
